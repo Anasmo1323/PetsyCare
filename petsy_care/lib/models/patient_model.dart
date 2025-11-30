@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart'; // Import this
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Patient {
   final String id;
@@ -8,7 +8,8 @@ class Patient {
   final String animalBreed;
   final String age;
   final String weight;
-  final Timestamp createdAt; // --- ADD THIS ---
+  final String deviceId; // --- NEW: Links patient to IoT Device ---
+  final Timestamp createdAt;
 
   Patient({
     required this.id,
@@ -18,10 +19,10 @@ class Patient {
     required this.animalBreed,
     required this.age,
     required this.weight,
-    required this.createdAt, // --- ADD THIS ---
+    this.deviceId = '', // --- NEW: Default to empty ---
+    required this.createdAt,
   });
 
-  // A factory to create a Patient from a Firestore document
   factory Patient.fromFirestore(Map<String, dynamic> data, String documentId) {
     return Patient(
       id: documentId,
@@ -31,12 +32,11 @@ class Patient {
       animalBreed: data['animalBreed'] ?? '',
       age: data['age'] ?? '',
       weight: data['weight'] ?? '',
-      // --- ADD THIS LINE (and a fallback) ---
-      createdAt: data['createdAt'] ?? Timestamp.now(), 
+      deviceId: data['deviceId'] ?? '', // --- NEW ---
+      createdAt: data['createdAt'] ?? Timestamp.now(),
     );
   }
 
-  // A method to convert a Patient object to a Map for Firestore
   Map<String, dynamic> toFirestore() {
     return {
       'ownerName': ownerName,
@@ -45,8 +45,8 @@ class Patient {
       'animalBreed': animalBreed,
       'age': age,
       'weight': weight,
-      // We don't need 'createdAt' here because we'll set it
-      // on the server when we add/update.
+      'deviceId': deviceId, // --- NEW ---
+      // createdAt is handled by the service
     };
   }
 }

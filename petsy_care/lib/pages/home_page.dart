@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:petsy_care/models/patient_model.dart'; // Corrected import
+// Corrected import
 import 'package:petsy_care/services/auth_service.dart'; // Corrected import
 import 'package:petsy_care/services/firestore_service.dart'; // Corrected import
-import 'package:petsy_care/pages/add_patient_page.dart';
 // ... other imports
-import 'package:petsy_care/pages/patient_detail_page.dart';
 import 'package:petsy_care/pages/visits_page.dart';
 
 class HomePage extends StatelessWidget {

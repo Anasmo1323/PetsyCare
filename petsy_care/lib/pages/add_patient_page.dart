@@ -1,13 +1,9 @@
-// --- This is the complete, new code for add_patient_page.dart ---
-
-import 'package:flutter/material.dart';
-import 'package:petsy_care/models/patient_model.dart'; // We added this
-import 'package:petsy_care/services/firestore_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
+import 'package:petsy_care/models/patient_model.dart';
+import 'package:petsy_care/services/firestore_service.dart';
 
 class AddPatientPage extends StatefulWidget {
-  // This is new! It's optional, so we can use this page
-  // for both adding (null) and editing (not null).
   final Patient? patient;
 
   const AddPatientPage({super.key, this.patient});
@@ -25,15 +21,15 @@ class _AddPatientPageState extends State<AddPatientPage> {
   final _breedController = TextEditingController();
   final _ageController = TextEditingController();
   final _weightController = TextEditingController();
+  // --- NEW CONTROLLER ---
+  final _deviceIdController = TextEditingController();
 
   final _firestoreService = FirestoreService();
   bool _isLoading = false;
 
-  // --- This is a new method ---
   @override
   void initState() {
     super.initState();
-    // If we are editing, fill the fields with the patient's data
     if (widget.patient != null) {
       _ownerNameController.text = widget.patient!.ownerName;
       _phoneController.text = widget.patient!.phoneNumber;
@@ -41,6 +37,8 @@ class _AddPatientPageState extends State<AddPatientPage> {
       _breedController.text = widget.patient!.animalBreed;
       _ageController.text = widget.patient!.age;
       _weightController.text = widget.patient!.weight;
+      // --- FILL DEVICE ID ---
+      _deviceIdController.text = widget.patient!.deviceId;
     }
   }
 
@@ -52,19 +50,15 @@ class _AddPatientPageState extends State<AddPatientPage> {
     _breedController.dispose();
     _ageController.dispose();
     _weightController.dispose();
+    _deviceIdController.dispose();
     super.dispose();
   }
 
-  // --- This method is UPDATED ---
   Future<void> _savePatient() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-if (!_formKey.currentState!.validate()) {
-      return;
-    }
-    
     setState(() {
       _isLoading = true;
     });
@@ -76,33 +70,28 @@ if (!_formKey.currentState!.validate()) {
       'animalBreed': _breedController.text,
       'age': _ageController.text,
       'weight': _weightController.text,
+      // --- SAVE DEVICE ID ---
+      'deviceId': _deviceIdController.text.trim(), // Remove extra spaces
     };
 
     try {
       if (widget.patient == null) {
-        // ADD MODE
         patientData['createdAt'] = FieldValue.serverTimestamp();
         await _firestoreService.addPatient(patientData);
       } else {
-        // EDIT MODE
         await _firestoreService.updatePatient(widget.patient!.id, patientData);
       }
 
-      // If successful, pop the page
       if (mounted) {
         Navigator.pop(context);
       }
     } catch (e) {
-      // If error, show the snackbar
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to save patient: $e')),
         );
       }
     } finally {
-      // --- THIS IS THE NEW PART ---
-      // This 'finally' block runs *no matter what*.
-      // If the app is still on this page, turn off the spinner.
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -113,9 +102,8 @@ if (!_formKey.currentState!.validate()) {
 
   @override
   Widget build(BuildContext context) {
-    // --- This title is now dynamic ---
     final isEditing = widget.patient != null;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text(isEditing ? 'Edit Patient' : 'Add New Patient'),
@@ -128,28 +116,44 @@ if (!_formKey.currentState!.validate()) {
                 key: _formKey,
                 child: ListView(
                   children: [
+                    // --- DEVICE ID FIELD (The most important one for IoT) ---
+                    TextFormField(
+                      controller: _deviceIdController,
+                      decoration: const InputDecoration(
+                        labelText: 'Smart Cage Device ID',
+                        hintText: 'e.g., cage_001',
+                        prefixIcon: Icon(Icons.qr_code),
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     TextFormField(
                       controller: _ownerNameController,
                       decoration: const InputDecoration(labelText: 'Owner Name'),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter an owner name';
-                        }
-                        return null;
-                      },
+                      validator: (value) =>
+                          value?.isEmpty ?? true ? 'Required' : null,
                     ),
                     TextFormField(
                       controller: _phoneController,
-                      decoration: const InputDecoration(labelText: 'Phone Number'),
+                      decoration: const InputDecoration(labelText: 'Phone'),
                       keyboardType: TextInputType.phone,
                     ),
-                    TextFormField(
-                      controller: _animalTypeController,
-                      decoration: const InputDecoration(labelText: 'Animal Type (e.g., Dog)'),
-                    ),
-                    TextFormField(
-                      controller: _breedController,
-                      decoration: const InputDecoration(labelText: 'Breed'),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _animalTypeController,
+                            decoration: const InputDecoration(labelText: 'Type'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _breedController,
+                            decoration: const InputDecoration(labelText: 'Breed'),
+                          ),
+                        ),
+                      ],
                     ),
                     TextFormField(
                       controller: _ageController,
@@ -158,8 +162,9 @@ if (!_formKey.currentState!.validate()) {
                     ),
                     TextFormField(
                       controller: _weightController,
-                      decoration: const InputDecoration(labelText: 'Weight (kg)'),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(labelText: 'Weight'),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                     ),
                     const SizedBox(height: 20),
                     ElevatedButton(

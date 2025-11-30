@@ -38,7 +38,7 @@ dependencies:
   intl: ^0.19.0
   table_calendar: ^3.1.2
   firebase_database: ^11.0.1  # For live IoT data
-  encrypt: ^5.0.3             # For AES security
+  encrypt: ^5.0.3          # For AES security
 
 dev_dependencies:
   flutter_test:

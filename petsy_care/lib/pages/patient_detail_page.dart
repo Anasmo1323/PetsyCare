@@ -151,8 +151,8 @@ class _PatientDetailPageState extends State<PatientDetailPage> {
           ),
           floatingActionButton: FloatingActionButton(
             onPressed: _addNewTreatmentPlan,
-            child: const Icon(Icons.add),
             tooltip: 'Start New Treatment Plan',
+            child: const Icon(Icons.add),
           ),
         );
       },
