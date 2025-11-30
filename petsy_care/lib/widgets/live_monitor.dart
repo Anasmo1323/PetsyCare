@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:petsy_care/services/realtime_db_service.dart';
+import 'package:petsy_care/widgets/temp_chart.dart'; // Make sure this is imported!
 
 class LiveMonitor extends StatelessWidget {
   final String deviceId;
@@ -13,67 +14,117 @@ class LiveMonitor extends StatelessWidget {
       return const Center(child: Text('No Device ID linked to this patient.'));
     }
 
+    // --- Stream 1: Sensor Data (Temp/Hum) ---
     return StreamBuilder<Map<String, String>>(
       stream: _rtdb.getSensorStream(deviceId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+      builder: (context, sensorSnapshot) {
         
-        final data = snapshot.data ?? {'temp': '--', 'humidity': '--'};
-        final temp = data['temp']!;
-        final hum = data['humidity']!;
+        // --- Stream 2: Distress Signal (The ML Alert) ---
+        return StreamBuilder<bool>(
+          stream: _rtdb.getDistressStream(deviceId),
+          builder: (context, distressSnapshot) {
+            
+            if (sensorSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-        // Simple alert logic
-        bool isCritical = false;
-        try {
-          double tVal = double.parse(temp);
-          if (tVal < 36.0 || tVal > 39.5) isCritical = true;
-        } catch (e) {} // Ignore parse errors
+            final data = sensorSnapshot.data ?? {'temp': '--', 'humidity': '--'};
+            final temp = data['temp']!;
+            final hum = data['humidity']!;
+            
+            // Check if distress is active (default to false)
+            final isDistress = distressSnapshot.data ?? false;
 
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              // --- STATUS CARD ---
-              Card(
-                color: isCritical ? Colors.red.shade100 : Colors.green.shade100,
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    children: [
-                      Text('LIVE TEMPERATURE', 
-                        style: TextStyle(color: isCritical ? Colors.red : Colors.green[800], fontWeight: FontWeight.bold)
+            // --- THE FIX: Wrap everything in SingleChildScrollView ---
+            return SingleChildScrollView( 
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    // --- THE NEW DISTRESS BANNER ---
+                    if (isDistress)
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        margin: const EdgeInsets.only(bottom: 20),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.red.withOpacity(0.5),
+                              blurRadius: 10,
+                              spreadRadius: 2,
+                            )
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.warning_amber_rounded, color: Colors.white, size: 40),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                "DISTRESS DETECTED!\nCheck Patient Immediately.",
+                                style: TextStyle(
+                                  color: Colors.white, 
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 10),
-                      Text(
-                        '$temp °C',
-                        style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+
+                    // --- STATUS CARD (Changes color if Distress is active) ---
+                    Card(
+                      color: isDistress ? Colors.red.shade50 : Colors.green.shade50,
+                      child: Padding(
+                        padding: const EdgeInsets.all(20.0),
+                        child: Column(
+                          children: [
+                            Text('LIVE TEMPERATURE', 
+                              style: TextStyle(
+                                color: isDistress ? Colors.red : Colors.green[800], 
+                                fontWeight: FontWeight.bold
+                              )
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              '$temp °C',
+                              style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold),
+                            ),
+                            Text('Humidity: $hum %'),
+                          ],
+                        ),
                       ),
-                      Text('Humidity: $hum %'),
-                    ],
-                  ),
+                    ),
+                    
+                    const SizedBox(height: 20),
+
+                    // --- THE GRAPH ---
+                    // This widget shows the history line chart
+                    TempChart(deviceId: deviceId),
+
+                    const SizedBox(height: 30),
+                    
+                    // --- CONTROLS ---
+                    const Text('Environment Controls', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Divider(),
+                    SwitchListTile(
+                      title: const Text('Heating Pad'),
+                      subtitle: const Text('Turn on to warm the cage'),
+                      secondary: const Icon(Icons.wb_sunny, color: Colors.orange),
+                      value: false, // In a real app, you would listen to the actual state
+                      onChanged: (val) {
+                        _rtdb.toggleHeater(deviceId, val);
+                      },
+                    ),
+                  ],
                 ),
               ),
-              
-              const SizedBox(height: 30),
-              
-              // --- CONTROLS ---
-              const Text('Environment Controls', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const Divider(),
-              SwitchListTile(
-                title: const Text('Heating Pad'),
-                subtitle: const Text('Turn on to warm the cage'),
-                secondary: const Icon(Icons.wb_sunny, color: Colors.orange),
-                value: false, // We need to read the *actual* state from DB later
-                onChanged: (val) {
-                  _rtdb.toggleHeater(deviceId, val);
-                  // Note: In a real app, this switch should listen to the DB state
-                  // to verify the hardware actually turned on.
-                },
-              ),
-            ],
-          ),
+            );
+          }
         );
       },
     );

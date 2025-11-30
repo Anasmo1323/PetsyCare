@@ -37,8 +37,11 @@ dependencies:
   google_sign_in: ^6.2.1
   intl: ^0.19.0
   table_calendar: ^3.1.2
-  firebase_database: ^11.0.1  # For live IoT data
-  encrypt: ^5.0.3          # For AES security
+  firebase_database: ^11.0.1 
+  encrypt: ^5.0.3   
+  fl_chart: ^0.66.0 
+  image_picker: ^1.0.7     
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:

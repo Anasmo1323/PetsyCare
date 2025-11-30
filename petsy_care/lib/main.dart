@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-// THIS PATH IS NOW CORRECT
-import 'package:petsy_care/pages/auth_wrapper.dart'; 
+import 'package:petsy_care/pages/auth_wrapper.dart';
+
+// 1. Create the Global Key here
+final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,10 +21,11 @@ class PetsyCareApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'PetsyCare',
+      // 2. Assign the key to the app
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      // This points to your AuthWrapper
       home: const AuthWrapper(),
     );
   }

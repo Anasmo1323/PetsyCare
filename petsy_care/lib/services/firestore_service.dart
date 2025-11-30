@@ -20,6 +20,8 @@ class FirestoreService {
   // Add a new patient
 // Add a new patient
   Future<void> addPatient(Map<String, dynamic> patientData) async {
+
+    
     // --- THIS IS THE NEW LOGIC ---
     if (_clinicId == null) {
       throw Exception('User is not logged in. Cannot add patient.');
@@ -53,6 +55,33 @@ Future<void> updatePatient(String patientId, Map<String, dynamic> patientData) a
     // Handle the error
   }
 }
+// --- User Management Methods ---
+
+  // 1. Check if a user document exists
+  Future<bool> checkUserExists(String uid) async {
+    try {
+      final doc = await _db.collection('users').doc(uid).get();
+      return doc.exists;
+    } catch (e) {
+      print(e);
+      return false;
+    }
+  }
+
+  // 2. Create a new user document
+  Future<void> createUser(String uid, String email, String name) async {
+    try {
+      await _db.collection('users').doc(uid).set({
+        'email': email,
+        'name': name,
+        'role': 'vet', // Default role
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print(e);
+      throw e;
+    }
+  }
   // Get a stream of all patients for the clinic
 Stream<List<Patient>> getPatients({
     DateTime? selectedDay,

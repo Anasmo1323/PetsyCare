@@ -38,7 +38,15 @@ class AuthService {
       return null;
     }
   }
-
+Future<void> disconnect() async {
+    try {
+      await _googleSignIn.disconnect();
+    } catch (e) {
+      // Sometimes disconnect fails if already signed out, which is fine
+      print("Disconnect error: $e"); 
+    }
+    await _auth.signOut();
+  }
   // Sign out
   Future<void> signOut() async {
     await _googleSignIn.signOut(); // Sign out from Google

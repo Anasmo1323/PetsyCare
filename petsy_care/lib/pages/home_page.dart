@@ -49,22 +49,6 @@ body: Padding(
               },
             ),
 
-            const SizedBox(height: 20),
-
-            // "Medications" Button
-            ElevatedButton.icon(
-              icon: const Icon(Icons.medical_services),
-              label: const Text('Medications'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 30),
-                textStyle: const TextStyle(fontSize: 22),
-                backgroundColor: Colors.grey[700], // Different color for now
-              ),
-              onPressed: () {
-                // We will build this page next!
-                // Navigator.push(context, ...);
-              },
-            ),
           ],
         ),
       ),
