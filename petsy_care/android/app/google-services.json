@@ -1,0 +1,98 @@
+{
+  "project_info": {
+    "project_number": "964683754957",
+    "project_id": "petsycare-10533",
+    "storage_bucket": "petsycare-10533.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:964683754957:android:4365456e522ea20c042884",
+        "android_client_info": {
+          "package_name": "com.example.petsy_care"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "964683754957-0bln7nuik8fpq623ghbkfmr244qjr7gi.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.petsy_care",
+            "certificate_hash": "a9fcf616ca08c34831b846a0fc3e87ca6e9dc06f"
+          }
+        },
+        {
+          "client_id": "964683754957-ia62p0ekjclfpo97ueg6fhon0s9li4q0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAHf19K5grxX58sEgzXSQq-zTZXgrpP-k4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "964683754957-ia62p0ekjclfpo97ueg6fhon0s9li4q0.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "964683754957-cpue5dgl63pqc8dqmdugrres5nk9evr2.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.petsyCare"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:964683754957:android:c074400f0105b6a4042884",
+        "android_client_info": {
+          "package_name": "petsy.care"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "964683754957-9oa37lnu5imoan06fghd2enn8vvtbuo2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "petsy.care",
+            "certificate_hash": "a9fcf616ca08c34831b846a0fc3e87ca6e9dc06f"
+          }
+        },
+        {
+          "client_id": "964683754957-ia62p0ekjclfpo97ueg6fhon0s9li4q0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAHf19K5grxX58sEgzXSQq-zTZXgrpP-k4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "964683754957-ia62p0ekjclfpo97ueg6fhon0s9li4q0.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "964683754957-cpue5dgl63pqc8dqmdugrres5nk9evr2.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.petsyCare"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
