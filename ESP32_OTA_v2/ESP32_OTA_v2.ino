@@ -1,18 +1,27 @@
 #include <ESP8266WiFi.h>
 #include <FirebaseESP8266.h>
+#include <DHT.h>
 
-// --- 1. WI-FI CONFIGURATION (EDIT THESE) ---
+// --- 1. WI-FI CONFIGURATION ---
 #define WIFI_SSID "STUDBME2"
 #define WIFI_PASSWORD "BME2Stud"
-#define HEATER_PIN 5
-// --- 2. FIREBASE CONFIGURATION (ALREADY FILLED FOR YOU) ---
-// Your Web API Key
+
+// --- RELAY / HEATER CONFIGURATION ---
+// IMPORTANT: Check your board pinout. 
+// On NodeMCU: GPIO 5 is usually D1. 
+#define HEATER_PIN 5 
+#define RELAY_ON LOW
+#define RELAY_OFF HIGH
+
+// --- DHT SENSOR CONFIGURATION ---
+// On NodeMCU: GPIO 4 is usually D2.
+#define DHTPIN 4
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+// --- 2. FIREBASE CONFIGURATION ---
 #define API_KEY "AIzaSyAHf19K5grxX58sEgzXSQq-zTZXgrpP-k4"
-
-// Your Database URL (No 'https://' and no trailing '/')
 #define DATABASE_URL "petsycare-10533-default-rtdb.europe-west1.firebasedatabase.app"
-
-// The Device ID must match what you typed in the App's "Add Patient" page
 #define DEVICE_ID "cage_001"
 
 // --- OBJECTS ---
@@ -21,12 +30,20 @@ FirebaseAuth auth;
 FirebaseConfig config;
 
 unsigned long sendDataPrevMillis = 0;
-int count = 0;
+
+// Variables to hold database values
+bool autoMode = false;     
+float targetTemp = 37.0;   
+bool manualSwitch = false; 
 
 void setup() {
   Serial.begin(115200);
 
-  // 1. Connect to Wi-Fi
+  // Initialize Pins
+  pinMode(HEATER_PIN, OUTPUT);
+  digitalWrite(HEATER_PIN, RELAY_OFF); 
+
+  // Connect Wi-Fi
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("Connecting to Wi-Fi");
   while (WiFi.status() != WL_CONNECTED) {
@@ -34,17 +51,15 @@ void setup() {
     delay(300);
   }
   Serial.println();
-  Serial.print("Connected with IP: ");
+  Serial.print("Connected: ");
   Serial.println(WiFi.localIP());
-  pinMode(HEATER_PIN, OUTPUT);
-  // 2. Configure Firebase
+  
+  dht.begin();
+
+  // Configure Firebase
   config.api_key = API_KEY;
   config.database_url = DATABASE_URL;
-  
-  // Set the database read/write timeout (optional but recommended)
   config.timeout.serverResponse = 10 * 1000;
-
-  // Sign in anonymously (since we are in Test Mode)
   config.signer.test_mode = true;
 
   Firebase.begin(&config, &auth);
@@ -52,72 +67,73 @@ void setup() {
 }
 
 void loop() {
-  // Check if 5 seconds have passed (Avoid spamming the database)
-  if (millis() - sendDataPrevMillis > 5000 || sendDataPrevMillis == 0) {
+  // FIXED: Added the missing "||" operator here
+  if (millis() - sendDataPrevMillis > 3000 || sendDataPrevMillis == 0) { 
     sendDataPrevMillis = millis();
 
-    // 3. Create Simulation Data
-    // Generates a random temperature between 36.0 and 40.0
-    float simulatedTemp = random(3600, 4000) / 10.0;
-    int simulatedHum = random(40, 60);
+    // 1. Read Sensor Data
+    float temperature = dht.readTemperature();
+    int humidity = (int)dht.readHumidity();
 
-    Serial.println("------------------------------------");
-    Serial.print("Sending Temp: ");
-    Serial.print(simulatedTemp);
-    Serial.println(" C");
-
-    // 4. Send to 'live_data' (For the Big Number Display)
-    // Path: /devices/cage_001/live_data
-    String basePath = "/devices/" + String(DEVICE_ID) + "/live_data";
-
-    if (Firebase.setFloat(fbdo, basePath + "/temperature", simulatedTemp)) {
-      Serial.println("Live Temp SENT");
-    } else {
-      Serial.print("Live Temp ERROR: ");
-      Serial.println(fbdo.errorReason());
+    if (isnan(temperature) || isnan(humidity)) {
+      Serial.println("DHT Read Failed");
+      return; 
     }
 
-    if (Firebase.setInt(fbdo, basePath + "/humidity", simulatedHum)) {
-      // Humidity sent
-    }
+    // Define Base Path
+    String basePath = "/devices/" + String(DEVICE_ID);
 
-    // 5. Send to 'history' (For the Chart)
-    // Path: /devices/cage_001/history
-    String historyPath = "/devices/" + String(DEVICE_ID) + "/history";
+    // 2. Upload Live Data (For Big Gauge)
+    Firebase.setFloat(fbdo, basePath + "/live_data/temperature", temperature);
+    Firebase.setInt(fbdo, basePath + "/live_data/humidity", humidity);
     
-    // Create a JSON object for the history entry
+    // 3. Upload History Data (For the Chart) -- ADDED THIS BACK
     FirebaseJson json;
-    json.set("temp", simulatedTemp);
-    json.set("time", millis()); // Using uptime as a simple timestamp
+    json.set("temp", temperature);
+    json.set("time", millis()); 
+    Firebase.pushJSON(fbdo, basePath + "/history", json);
+
+    // 4. READ SETTINGS (The "Brain" part)
+    // FIXED: Path names now match Flutter App exactly
     
-    // pushJSON creates a new unique ID (like "-Nxy89...") automatically
-    if (Firebase.pushJSON(fbdo, historyPath, json)) {
-      Serial.println("History Point SENT");
-    } else {
-      Serial.print("History ERROR: ");
-      Serial.println(fbdo.errorReason());
+    // A. Check Mode (Auto vs Manual) -> Path: config/auto_mode
+    if (Firebase.getBool(fbdo, basePath + "/config/auto_mode")) {
+      autoMode = fbdo.boolData();
+    }
+    
+    // B. Check Target Temp -> Path: config/target_temp
+    if (Firebase.getFloat(fbdo, basePath + "/config/target_temp")) {
+      targetTemp = fbdo.floatData();
+    }
+
+    // C. Check Manual Switch State -> Path: controls/heater
+    if (Firebase.getBool(fbdo, basePath + "/controls/heater")) {
+      manualSwitch = fbdo.boolData();
+    }
+
+    Serial.println("-------------------------");
+    Serial.printf("Temp: %.1f C | Target: %.1f C | AutoMode: %s\n", temperature, targetTemp, autoMode ? "TRUE" : "FALSE");
+
+    // 5. CONTROL LOGIC
+    if (autoMode) {
+      // --- AUTOMATIC THERMOSTAT LOGIC ---
+      if (temperature < targetTemp) {
+        digitalWrite(HEATER_PIN, RELAY_ON);
+        Serial.println("Action: Heater ON (Too Cold)");
+      } else {
+        digitalWrite(HEATER_PIN, RELAY_OFF);
+        Serial.println("Action: Heater OFF (Warm Enough)");
+      }
+    } 
+    else {
+      // --- MANUAL APP CONTROL LOGIC ---
+      if (manualSwitch) {
+        digitalWrite(HEATER_PIN, RELAY_ON);
+        Serial.println("Action: Heater ON (Manual)");
+      } else {
+        digitalWrite(HEATER_PIN, RELAY_OFF);
+        Serial.println("Action: Heater OFF (Manual)");
+      }
     }
   }
-// ... after sending temperature ...
-
-  // --- 6. Check Heater Status (Receive from App) ---
-  // Path: /devices/cage_001/controls/heater
-  String controlPath = "/devices/" + String(DEVICE_ID) + "/controls/heater";
-
-  if (Firebase.getBool(fbdo, controlPath)) {
-    bool isHeaterOn = fbdo.boolData();
-    
-    // Turn the pin HIGH (1) or LOW (0) based on the database value
-    digitalWrite(HEATER_PIN, isHeaterOn ? HIGH : LOW);
-    
-    Serial.print("Heater Status: ");
-    Serial.println(isHeaterOn ? "ON (1)" : "OFF (0)");
-  } else {
-    // Only print error if it's not just "path not found" (which happens if you haven't clicked the button yet)
-    Serial.print("Check heater failed: ");
-    Serial.println(fbdo.errorReason());
-  }
-
-  // Wait 3 seconds before next update
-  delay(3000);
 }
