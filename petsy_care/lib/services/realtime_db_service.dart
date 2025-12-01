@@ -34,7 +34,19 @@ class RealtimeDBService {
       };
     });
   }
+// Listen for Heater Status
+  // Path: devices/cage_001/controls/heater
+  Stream<bool> getHeaterStream(String deviceId) {
+    if (deviceId.isEmpty) return Stream.value(false);
 
+    final ref = _db.ref('devices/$deviceId/controls/heater');
+
+    return ref.onValue.map((event) {
+      // If null (not set yet), assume false
+      if (event.snapshot.value == true) return true;
+      return false;
+    });
+  }
   // 3. THIS WAS MISSING: Stream for Distress Signal (Boolean)
   Stream<bool> getDistressStream(String deviceId) {
     if (deviceId.isEmpty) return Stream.value(false);

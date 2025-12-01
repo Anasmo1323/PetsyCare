@@ -34,22 +34,34 @@ class AuthService {
       return await _auth.signInWithCredential(credential);
     } on FirebaseAuthException catch (e) {
       // Handle errors
-      print(e.message);
+      print("Firebase Auth Error: ${e.message}");
+      return null;
+    } catch (e) {
+      print("General Auth Error: $e");
       return null;
     }
   }
-Future<void> disconnect() async {
+
+  // Standard Sign Out
+  Future<void> signOut() async {
+    try {
+      await _googleSignIn.signOut(); // Sign out from Google
+      await _auth.signOut(); // Sign out from Firebase
+    } catch (e) {
+      print("Sign out error: $e");
+    }
+  }
+
+  // Force a disconnect (Forget the user completely)
+  // This is crucial for fixing the "stuck" login loop with bad emails.
+  // It forces Google to show the account picker again.
+  Future<void> disconnect() async {
     try {
       await _googleSignIn.disconnect();
     } catch (e) {
       // Sometimes disconnect fails if already signed out, which is fine
-      print("Disconnect error: $e"); 
+      print("Disconnect error: $e");
     }
     await _auth.signOut();
-  }
-  // Sign out
-  Future<void> signOut() async {
-    await _googleSignIn.signOut(); // Sign out from Google
-    await _auth.signOut(); // Sign out from Firebase
   }
 }
