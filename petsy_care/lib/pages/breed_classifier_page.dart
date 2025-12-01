@@ -5,7 +5,7 @@ import 'package:petsy_care/services/firestore_service.dart';
 import 'package:petsy_care/services/ml_service.dart';
 
 class BreedClassifierPage extends StatefulWidget {
-  final String? patientId; // We now accept a patient ID
+  final String? patientId;
 
   const BreedClassifierPage({super.key, this.patientId});
 
@@ -15,7 +15,7 @@ class BreedClassifierPage extends StatefulWidget {
 
 class _BreedClassifierPageState extends State<BreedClassifierPage> {
   final MLService _mlService = MLService();
-  final FirestoreService _firestoreService = FirestoreService(); // For the update
+  final FirestoreService _firestoreService = FirestoreService(); 
   final ImagePicker _picker = ImagePicker();
   
   File? _selectedImage;
@@ -61,7 +61,6 @@ class _BreedClassifierPageState extends State<BreedClassifierPage> {
         _result = prediction;
       });
 
-      // --- NEW LOGIC: Ask to update if we have a patientId ---
       if (widget.patientId != null) {
         _showUpdateDialog(prediction);
       }
@@ -77,15 +76,12 @@ class _BreedClassifierPageState extends State<BreedClassifierPage> {
     }
   }
 
-  // --- NEW DIALOG FUNCTION ---
   Future<void> _showUpdateDialog(String prediction) async {
-    // Clean the string (Remove confidence %)
-    // "German Shepherd (96.5%)" -> "German Shepherd"
     String breedOnly = prediction.split('(')[0].trim();
 
     return showDialog<void>(
       context: context,
-      barrierDismissible: false, // User must choose
+      barrierDismissible: false, 
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Update Patient Record?'),
@@ -112,7 +108,7 @@ class _BreedClassifierPageState extends State<BreedClassifierPage> {
             TextButton(
               child: const Text('Yes, Update'),
               onPressed: () async {
-                Navigator.of(context).pop(); // Close dialog first
+                Navigator.of(context).pop(); 
                 await _updatePatientBreed(breedOnly);
               },
             ),
@@ -122,19 +118,18 @@ class _BreedClassifierPageState extends State<BreedClassifierPage> {
     );
   }
 
-  // --- NEW UPDATE FUNCTION ---
+  // --- SIMPLIFIED UPDATE FUNCTION (No Image Upload) ---
   Future<void> _updatePatientBreed(String newBreed) async {
     try {
       await _firestoreService.updatePatient(
         widget.patientId!, 
-        {'animalBreed': newBreed} // Only update this one field
+        {'animalBreed': newBreed} 
       );
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Breed updated successfully!')),
         );
-        // Optional: Go back to patient page automatically
         Navigator.pop(context); 
       }
     } catch (e) {

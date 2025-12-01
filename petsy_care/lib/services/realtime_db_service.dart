@@ -61,6 +61,30 @@ class RealtimeDBService {
     });
   }
 
+  // Set Target Temp
+  Future<void> setTargetTemp(String deviceId, double temp) async {
+    if (deviceId.isEmpty) return;
+    await _db.ref('devices/$deviceId/config').update({'target_temp': temp});
+  }
+
+  // Toggle Auto Mode
+  Future<void> toggleAutoMode(String deviceId, bool isAuto) async {
+    if (deviceId.isEmpty) return;
+    await _db.ref('devices/$deviceId/config').update({'auto_mode': isAuto});
+  }
+
+  // Listen to Config (to update UI sliders)
+  Stream<Map<String, dynamic>> getConfigStream(String deviceId) {
+    if (deviceId.isEmpty) return Stream.value({});
+    return _db.ref('devices/$deviceId/config').onValue.map((event) {
+      final data = event.snapshot.value as Map?;
+      return {
+        'auto_mode': data?['auto_mode'] ?? false,
+        'target_temp': (data?['target_temp'] ?? 37.0).toDouble(),
+      };
+    });
+  }
+
   // 4. Command to toggle Heater
   Future<void> toggleHeater(String deviceId, bool isOn) async {
     if (deviceId.isEmpty) return;

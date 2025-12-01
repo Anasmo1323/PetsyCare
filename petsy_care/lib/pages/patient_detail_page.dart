@@ -118,7 +118,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> with SingleTicker
             ),
           ),
           
-          // 5. Attach our manual controller to the TabBarView
+          // 5. Attach our manual controller to the ب
           body: TabBarView(
             controller: _tabController,
             children: [
@@ -196,7 +196,7 @@ class _PatientDetailPageState extends State<PatientDetailPage> with SingleTicker
     );
   }
 
-  Widget _buildPatientInfoCard(Patient patient) {
+Widget _buildPatientInfoCard(Patient patient) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -206,7 +206,9 @@ class _PatientDetailPageState extends State<PatientDetailPage> with SingleTicker
             Text('Owner: ${patient.ownerName}', style: const TextStyle(fontSize: 16)),
             Text('Phone: ${patient.phoneNumber}', style: const TextStyle(fontSize: 16)),
             const SizedBox(height: 10),
-            Text('Animal: ${patient.animalType} (${patient.animalBreed})', style: const TextStyle(fontSize: 16)),
+            Text('Animal: ${patient.animalType}', style: const TextStyle(fontSize: 16)),
+            // Highlight the Breed so you can see the AI update worked
+            Text('Breed: ${patient.animalBreed}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color.fromARGB(255, 18, 88, 168))),
             Text('Age: ${patient.age}', style: const TextStyle(fontSize: 16)),
             Text('Weight: ${patient.weight} kg', style: const TextStyle(fontSize: 16)),
           ],

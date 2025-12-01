@@ -8,8 +8,9 @@ class Patient {
   final String animalBreed;
   final String age;
   final String weight;
-  final String deviceId; // --- NEW: Links patient to IoT Device ---
+  final String deviceId;
   final Timestamp createdAt;
+  final String? imageUrl; // --- NEW: Holds the URL of the photo ---
 
   Patient({
     required this.id,
@@ -19,8 +20,9 @@ class Patient {
     required this.animalBreed,
     required this.age,
     required this.weight,
-    this.deviceId = '', // --- NEW: Default to empty ---
+    this.deviceId = '',
     required this.createdAt,
+    this.imageUrl, // --- NEW: Optional parameter ---
   });
 
   factory Patient.fromFirestore(Map<String, dynamic> data, String documentId) {
@@ -32,8 +34,9 @@ class Patient {
       animalBreed: data['animalBreed'] ?? '',
       age: data['age'] ?? '',
       weight: data['weight'] ?? '',
-      deviceId: data['deviceId'] ?? '', // --- NEW ---
+      deviceId: data['deviceId'] ?? '',
       createdAt: data['createdAt'] ?? Timestamp.now(),
+      imageUrl: data['imageUrl'], // --- NEW: Read from DB ---
     );
   }
 
@@ -45,8 +48,9 @@ class Patient {
       'animalBreed': animalBreed,
       'age': age,
       'weight': weight,
-      'deviceId': deviceId, // --- NEW ---
-      // createdAt is handled by the service
+      'deviceId': deviceId,
+      'imageUrl': imageUrl, // --- NEW: Write to DB ---
+      // createdAt is handled by the service during creation
     };
   }
 }
