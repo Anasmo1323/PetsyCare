@@ -29,17 +29,72 @@ class RealtimeDBService {
       String realTemp = _security.decrypt(rawTemp);
       String realHum = _security.decrypt(rawHum);
 
+
       return {
         'temp': realTemp, 
         'humidity': realHum,
       };
     });
   }
+// Listen for Heater Status
+  // Path: devices/cage_001/controls/heater
+  Stream<bool> getHeaterStream(String deviceId) {
+    if (deviceId.isEmpty) return Stream.value(false);
 
-  // ... (Rest of your methods: getHeaterStream, toggleHeater etc. remain the same)
-  // Note: For commands (App -> ESP), we usually keep them as plain Booleans (true/false) 
-  // because encryption adds latency to controls, but you can encrypt them similarly if required.
-  Stream<bool> getHeaterStream(String deviceId) { ... }
-  Stream<bool> getDistressStream(String deviceId) { ... }
-  Future<void> toggleHeater(String deviceId, bool isOn) async { ... }
+    final ref = _db.ref('devices/$deviceId/controls/heater');
+
+    return ref.onValue.map((event) {
+      // If null (not set yet), assume false
+      if (event.snapshot.value == true) return true;
+      return false;
+    });
+  }
+  // 3. THIS WAS MISSING: Stream for Distress Signal (Boolean)
+  Stream<bool> getDistressStream(String deviceId) {
+    if (deviceId.isEmpty) return Stream.value(false);
+
+    // Path: devices/cage_001/distress_active
+    final ref = _db.ref('devices/$deviceId/distress_active');
+
+    return ref.onValue.map((event) {
+      // If the value exists and is true, return true. Otherwise false.
+      if (event.snapshot.value == true) return true;
+      return false;
+    });
+  }
+
+  // Set Target Temp
+  Future<void> setTargetTemp(String deviceId, double temp) async {
+    if (deviceId.isEmpty) return;
+    await _db.ref('devices/$deviceId/config').update({'target_temp': temp});
+  }
+
+  // Toggle Auto Mode
+  Future<void> toggleAutoMode(String deviceId, bool isAuto) async {
+    if (deviceId.isEmpty) return;
+    await _db.ref('devices/$deviceId/config').update({'auto_mode': isAuto});
+  }
+
+  // Listen to Config (to update UI sliders)
+  Stream<Map<String, dynamic>> getConfigStream(String deviceId) {
+    if (deviceId.isEmpty) return Stream.value({});
+    return _db.ref('devices/$deviceId/config').onValue.map((event) {
+      final data = event.snapshot.value as Map?;
+      return {
+        'auto_mode': data?['auto_mode'] ?? false,
+        'target_temp': (data?['target_temp'] ?? 37.0).toDouble(),
+      };
+    });
+  }
+
+  // 4. Command to toggle Heater
+  Future<void> toggleHeater(String deviceId, bool isOn) async {
+    if (deviceId.isEmpty) return;
+    
+    final ref = _db.ref('devices/$deviceId/controls');
+    
+    await ref.update({
+      'heater': isOn, 
+    });
+  }
 }

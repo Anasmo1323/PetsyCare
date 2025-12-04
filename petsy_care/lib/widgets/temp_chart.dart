@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:petsy_care/services/security_service.dart'; // Import Security
 
 class TempChart extends StatefulWidget {
   final String deviceId;
@@ -10,12 +11,14 @@ class TempChart extends StatefulWidget {
 
   @override
   State<TempChart> createState() => _TempChartState();
-}
+} 
 
 class _TempChartState extends State<TempChart> {
   List<FlSpot> _spots = [];
+  
+  // 1. Add the Security Service
+  final SecurityService _security = SecurityService();
 
-  // --- IMPORTANT: Use your specific Europe URL here ---
   final _database = FirebaseDatabase.instanceFor(
     app: Firebase.app(),
     databaseURL: 'https://petsycare-10533-default-rtdb.europe-west1.firebasedatabase.app',
@@ -27,10 +30,9 @@ class _TempChartState extends State<TempChart> {
     _activateListeners();
   }
 
-void _activateListeners() {
+  void _activateListeners() {
     if (widget.deviceId.isEmpty) return;
 
-    // Listen to history
     final ref = _database.ref('devices/${widget.deviceId}/history').limitToLast(20);
 
     ref.onValue.listen((event) {
@@ -40,32 +42,36 @@ void _activateListeners() {
       final List<FlSpot> newSpots = [];
       int index = 0;
 
-      // CASE 1: Data is a List (like your current JSON export: [null, {temp:37.5}, ...])
+      // Helper function to process a single entry
+      void processEntry(dynamic entry) {
+        if (entry == null) return;
+        
+        dynamic tempVal;
+        if (entry is Map) {
+          tempVal = entry['temp'];
+        } else {
+          tempVal = entry; 
+        }
+        
+        // --- NEW: Decrypt the history point ---
+        String decryptedString = _security.decrypt(tempVal.toString());
+        
+        // Parse the decrypted string to a double
+        final double val = double.tryParse(decryptedString) ?? 0.0;
+        
+        newSpots.add(FlSpot(index.toDouble(), val));
+        index++;
+      }
+
+      // Handle List vs Map structure
       if (rawData is List) {
         for (var entry in rawData) {
-          if (entry == null) continue; // Skip null entries
-          // Handle case where entry is just a number or a map
-          dynamic tempVal;
-          if (entry is Map) {
-            tempVal = entry['temp'];
-          } else {
-            tempVal = entry; 
-          }
-          
-          final double val = double.tryParse(tempVal.toString()) ?? 0.0;
-          newSpots.add(FlSpot(index.toDouble(), val));
-          index++;
+          processEntry(entry);
         }
-      } 
-      // CASE 2: Data is a Map (Keys are random IDs: "-Nxy89...")
-      else if (rawData is Map) {
-        // Sort by keys to keep time order
+      } else if (rawData is Map) {
         final sortedKeys = rawData.keys.toList()..sort();
         for (var key in sortedKeys) {
-          final entry = rawData[key];
-          final double val = double.tryParse(entry['temp'].toString()) ?? 0.0;
-          newSpots.add(FlSpot(index.toDouble(), val));
-          index++;
+          processEntry(rawData[key]);
         }
       }
 
@@ -76,15 +82,15 @@ void _activateListeners() {
       }
     });
   }
+
   @override
   Widget build(BuildContext context) {
-    // If no history exists yet
     if (_spots.isEmpty) {
       return const SizedBox(
         height: 200,
         child: Center(
           child: Text(
-            "No history data available.\nAdd data to '/history' in Firebase.",
+            "Waiting for history data...",
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.grey),
           ),
@@ -107,12 +113,12 @@ void _activateListeners() {
               gridData: const FlGridData(show: true, drawVerticalLine: false),
               titlesData: const FlTitlesData(
                 leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 40)),
-                bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)), // Hide Time axis for simplicity
+                bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
                 rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
               ),
               borderData: FlBorderData(show: true, border: Border.all(color: Colors.grey.shade300)),
-              minY: 30, // Optimized for Vet/Body Temp range
+              minY: 30, 
               maxY: 45, 
               lineBarsData: [
                 LineChartBarData(
