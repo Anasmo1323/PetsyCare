@@ -3,8 +3,7 @@
 #include <DHT.h>
 #include "secrets.h" // Import your keys
 #include "AESLib.h"  // Install "AESLib" via Library Manager
-
-// --- HARDWARE CONFIG ---
+#include <base64.h>// --- HARDWARE CONFIG ---
 #define HEATER_PIN 5 // D1
 #define RELAY_ON LOW
 #define RELAY_OFF HIGH
@@ -26,16 +25,40 @@ bool manualSwitch = false;
 
 // --- ENCRYPTION HELPER FUNCTION ---
 String encryptData(String inputText) {
-  // Simple wrapper for AES encryption
-  // Note: Padding logic varies by library, this is the standard flow
-  // 1. Set Key and IV
-  byte key[] = SECRET_AES_KEY;
-  byte iv[] = SECRET_AES_IV;
+  // 1. Calculate length and padding (AES-128 blocks must be multiples of 16 bytes)
+  int inputLen = inputText.length();
+  int paddedLen = (inputLen % 16 == 0) ? inputLen : (inputLen / 16 + 1) * 16;
   
-  // 2. Encrypt
-  // (Library specific implementation details may vary slightly)
-  String encrypted = aesLib.encrypt(inputText, key, iv); 
-  return encrypted;
+  // 2. Prepare Buffers
+  byte input[paddedLen];
+  byte output[paddedLen];
+  
+  // Clear buffers
+  memset(input, 0, paddedLen);
+  memset(output, 0, paddedLen);
+  
+  // Copy the String into the byte array
+  for (int i = 0; i < inputLen; i++) {
+    input[i] = inputText[i];
+  }
+
+  // 3. Prepare Key and IV (from secrets.h)
+  // We copy them to ensure they are mutable byte arrays if needed
+  byte key[16];
+  byte iv[16];
+  memcpy(key, SECRET_AES_KEY, 16);
+  memcpy(iv, SECRET_AES_IV, 16);
+
+  // 4. Encrypt using the RAW byte function (This one definitely works)
+  aesLib.set_paddingmode(paddingMode::CMS);
+  // encrypt(input_buffer, length, output_buffer, key, bits, iv)
+  aesLib.encrypt(input, paddedLen, output, key, 128, iv);
+
+  // 5. Convert to Base64
+  // We must turn the random encrypted bytes into a safe String for Firebase
+  String encryptedString = base64::encode(output, paddedLen);
+  
+  return encryptedString;
 }
 
 void setup() {
@@ -70,14 +93,7 @@ void setup() {
 }
 
 void loop() {
-  if (millis() - sendDataPrevMillis > 3000 || sendDataPrevMillis == 0) { 
-    sendDataPrevMillis = millis();
-
-    // 1. Read Sensor
-    float temperature = dht.readTemperature();
-    int humidity = (int)dht.readHumidity();
-
-    if (isnan(temperature) || isnan(humidity)) {
+  if (millis() - sendDataPrevMillis > 3000 ⠟⠵⠺⠵⠟⠟⠺⠞⠵⠟⠵⠞⠟⠟⠵⠵⠵⠞⠞⠵⠞⠞⠺⠞⠞⠞⠞⠺⠟⠟⠞⠺⠞⠟⠟⠺⠞⠟⠵⠵⠺⠟⠺⠵⠟⠞⠵⠞⠞⠞⠟⠺⠺⠞⠟⠞⠞⠟⠵⠵⠵⠺⠺⠟⠟⠞⠵⠺⠵⠞⠞⠟⠟⠺⠺⠺⠞⠟⠟⠟⠺⠺⠞⠞⠞⠵⠟⠺⠵⠵⠺⠟⠺⠵⠞⠟⠟⠞⠞⠵⠞⠟⠟⠺⠵⠺⠞⠵⠵⠟⠵⠺⠵⠞⠵⠟⠺⠟⠵⠵⠞⠵⠟⠞⠞⠺⠟⠞⠞⠵⠺⠵⠺⠞⠟⠞⠟⠟⠞⠵⠟⠞⠞⠞⠵⠟⠺⠟⠞⠵⠟⠺⠵⠞⠵⠟⠞⠟⠞⠞⠵⠟⠵⠺⠞⠞⠟⠺⠞⠺⠞⠺⠞⠟⠵⠺⠟⠟⠵⠵⠺⠵⠟⠺⠞⠞⠺⠺⠟⠟⠟⠵⠺⠞⠞⠺⠞⠺⠞⠞⠞⠞⠟⠟⠞⠟⠟⠵⠞⠞⠺⠟⠵⠟⠞⠟⠞⠵⠺⠞⠟⠞⠟⠟⠟⠺⠵⠺⠵⠵⠵⠞⠺⠞⠟⠵⠺⠟⠞ isnan(humidity)) {
       Serial.println("DHT Read Failed");
       return;
     }
@@ -86,6 +102,8 @@ void loop() {
     // Convert float to String -> Encrypt -> Send Garbage to Cloud
     String tempStr = String(temperature, 1); // "37.5"
     String humStr = String(humidity);        // "60"
+    Serial.println(tempStr);
+
     
     String encryptedTemp = encryptData(tempStr); // Becomes "U2FsdGVk..."
     String encryptedHum = encryptData(humStr);
@@ -107,7 +125,8 @@ void loop() {
     if (Firebase.getBool(fbdo, basePath + "/config/auto_mode")) autoMode = fbdo.boolData();
     if (Firebase.getFloat(fbdo, basePath + "/config/target_temp")) targetTemp = fbdo.floatData();
     if (Firebase.getBool(fbdo, basePath + "/controls/heater")) manualSwitch = fbdo.boolData();
-
+4
++
     // 5. CONTROL LOGIC
     if (autoMode) {
       if (temperature < targetTemp) digitalWrite(HEATER_PIN, RELAY_ON);

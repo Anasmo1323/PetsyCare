@@ -6,7 +6,7 @@ class MLService {
   // REPLACE THIS URL with your friend's actual server URL later.
   // For Android Emulator testing, use 'http://10.0.2.2:5000/predict'
   // For Physical Device, use your PC's local IP (e.g. 'http://192.168.1.5:5000/predict')
-  final String _apiUrl = "http://172.28.132.143:5000/predict";
+  final String _apiUrl = "http://172.28.132.195:5000/predict";
 
   Future<void> initialize() async {
     // No local initialization needed for Cloud API

@@ -10,7 +10,7 @@ class RealtimeDBService {
   
   final SecurityService _security = SecurityService();
 
-  Stream<Map<String, String>> getSensorStream(String deviceId) {
+Stream<Map<String, String>> getSensorStream(String deviceId) {
     if (deviceId.isEmpty) return Stream.value({});
 
     final ref = _db.ref('devices/$deviceId/live_data');
@@ -19,16 +19,36 @@ class RealtimeDBService {
       final data = event.snapshot.value as Map?;
       if (data == null) return {'temp': '--', 'humidity': '--'};
 
-      // 1. Get the Raw (Encrypted) Strings
+      // 1. Get the Raw Strings
       String rawTemp = data['temperature']?.toString() ?? '';
       String rawHum = data['humidity']?.toString() ?? '';
 
-      // --- SECURITY UPGRADE: DECRYPTION ---
-      // 2. Decrypt them using the shared key
-      // If decryption fails (e.g. data is empty), it returns a safe default.
-      String realTemp = _security.decrypt(rawTemp);
-      String realHum = _security.decrypt(rawHum);
+      // --- DEBUG: Print what we actually got ---
+      print("🔥 RAW FROM FIREBASE: Temp='$rawTemp' | Hum='$rawHum'");
 
+      // 2. Clean the data (Remove newlines or whitespace that breaks encryption)
+      rawTemp = rawTemp.trim().replaceAll('\n', '').replaceAll('\r', '');
+      rawHum = rawHum.trim().replaceAll('\n', '').replaceAll('\r', '');
+
+      // 3. Decrypt
+      String realTemp = '--';
+      String realHum = '--';
+
+      // Only attempt decryption if it looks like encrypted data (long string)
+      // If it's short (like "38.5"), just show it directly to prevent crashing.
+      if (rawTemp.length > 10) {
+         realTemp = _security.decrypt(rawTemp);
+      } else {
+         realTemp = rawTemp; // Assume it's already plain text
+      }
+
+      if (rawHum.length > 10) {
+         realHum = _security.decrypt(rawHum);
+      } else {
+         realHum = rawHum;
+      }
+
+      print("✅ DECRYPTED: $realTemp / $realHum");
 
       return {
         'temp': realTemp, 
